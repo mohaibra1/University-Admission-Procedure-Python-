@@ -23,49 +23,66 @@ def sort_high_low(app):
 
 def read_applicants(filename):
     """Reads applicants from a file and parses them into a structured list."""
-    applicants_in = []
+    app = []
     with open(filename, 'r') as file:
         for line in file:
             parts = line.strip().split()
             first_name, last_name = parts[0], parts[1]
-            gpa = float(parts[2])
-            priorities = parts[3:]
-            applicants_in.append((f"{first_name} {last_name}", gpa, priorities))
-    return applicants_in
+            scores = list(map(float, parts[2:6]))  # Convert the four scores to floats
+            priorities = parts[6:]
+            app.append((f"{first_name} {last_name}", scores, priorities))
+    return app
 
 def process_applicants(app, n):
-    """Processes applicants for each department based on their priorities and GPAs."""
-    departments = {
-        'Biotech' : [],
+    """Processes applicants for each department based on their priorities and scores."""
+    departments1 = {
+        'Biotech': [],
         'Chemistry': [],
         'Engineering': [],
         'Mathematics': [],
         'Physics': []
     }
 
-    for priority in range(3):
-        app.sort(key=lambda x: (-x[1], x[0]))
+    # Mapping departments to specific exam index
+    department_exam_index = {
+        'Physics': 0,
+        'Chemistry': 1,
+        'Mathematics': 2,
+        'Engineering': 3,
+        'Biotech': 1
+    }
 
+    # For each priority round (1st, 2nd, 3rd)
+    for priority in range(3):
+        # Sort applicants by relevant exam score and name
+        app.sort(key=lambda x: (-x[1][department_exam_index[x[2][priority]]], x[0]))
+
+        # Assign applicants based on the current priority
         remaining_applicants = []
-        for name, gpa, priorities in app:
+        for name, scores, priorities in app:
             chosen_department = priorities[priority]
-            if len(departments[chosen_department]) < n:
-                departments[chosen_department].append((name, gpa))
+            relevant_score = scores[department_exam_index[chosen_department]]
+            if len(departments1[chosen_department]) < n:
+                departments1[chosen_department].append((name, relevant_score))
             else:
-                remaining_applicants.append((name, gpa, priorities))
+                remaining_applicants.append((name, scores, priorities))
+
+        # Update applicants list with only those not yet accepted
         app = remaining_applicants
 
-    return departments
+    return departments1
+
 
 def print_departments(departments1):
     """Prints out the final accepted applicants for each department in the required format."""
-    for department in sorted(departments1.keys()):
+    for department in sorted(departments.keys()):
         print(department)
-
-        accepted_applicants = sorted(departments1[department], key=lambda x: (-x[1], x[0]))
-        for name, gpa, in accepted_applicants:
-            print(f'{name} {gpa:.2f}')
+        # Sort each department's accepted applicants by score descending, then by name ascending
+        accepted_applicants = sorted(departments[department], key=lambda x: (-x[1], x[0]))
+        for name, score in accepted_applicants:
+            print(f"{name} {score:.1f}")
         print()
+
 total_num_applicants = int(input('Number of applicants: '))
 # max_num_applicants = int(input('Maximum number of applicants: '))
 applicants = read_applicants('applicants.txt')

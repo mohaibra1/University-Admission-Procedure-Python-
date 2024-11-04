@@ -18,6 +18,9 @@ files:
   - name: tests.py
     visible: false
     learner_created: false
+  - name: applicants
+    visible: true
+    learner_created: true
 feedback_link: https://hyperskill.org/projects/163/stages/849/implement#comment
 status: Unchecked
-record: -1
+record: 6
