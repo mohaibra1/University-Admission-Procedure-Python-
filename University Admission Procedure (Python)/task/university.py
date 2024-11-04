@@ -21,6 +21,7 @@ def sort_high_low(app):
     sorted_list = sorted(app, reverse=True, key=lambda x: (x[0], x[1]))
     return sorted_list
 
+
 def read_applicants(filename):
     """Reads applicants from a file and parses them into a structured list."""
     applicants = []
@@ -28,26 +29,29 @@ def read_applicants(filename):
         for line in file:
             parts = line.strip().split()
             first_name, last_name = parts[0], parts[1]
-            scores = list(map(float, parts[2:6]))  # Convert the four scores to floats
-            priorities = parts[6:]
-            applicants.append((f"{first_name} {last_name}", scores, priorities))
+            scores = list(map(float, parts[2:6]))  # Convert the four final exam scores to floats
+            special_exam = float(parts[6])  # Special exam score
+            priorities = parts[7:]
+            applicants.append((f"{first_name} {last_name}", scores, special_exam, priorities))
     return applicants
 
-def get_department_score(department, scores):
-    """Returns the relevant score or mean score for a department."""
+
+def get_best_score(department, scores, special_exam):
+    """Returns the best score for an applicant based on department exam requirements and special exam."""
     department_exam_indices = {
-        'Physics': [0, 2],         # Physics and Math
-        'Chemistry': [1],          # Chemistry
-        'Mathematics': [2],        # Math
-        'Engineering': [3, 2],     # Computer Science and Math
-        'Biotech': [1, 0]          # Chemistry and Physics
+        'Physics': [0, 2],  # Physics and Math
+        'Chemistry': [1],  # Chemistry
+        'Mathematics': [2],  # Math
+        'Engineering': [3, 2],  # Computer Science and Math
+        'Biotech': [1, 0]  # Chemistry and Physics
     }
     exams = department_exam_indices[department]
-    return sum(scores[i] for i in exams) / len(exams)
+    mean_final_score = sum(scores[i] for i in exams) / len(exams)
+    return max(mean_final_score, special_exam)
 
 
 def process_applicants(applicants, n):
-    """Processes applicants for each department based on their priorities and scores."""
+    """Processes applicants for each department based on their priorities and best scores."""
     departments = {
         'Biotech': [],
         'Chemistry': [],
@@ -58,25 +62,26 @@ def process_applicants(applicants, n):
 
     # For each priority round (1st, 2nd, 3rd)
     for priority in range(3):
-        # Sort applicants by relevant score and name
+        # Sort applicants by the best score for their chosen department and name
         applicants.sort(
-            key=lambda x: (-get_department_score(x[2][priority], x[1]), x[0])
+            key=lambda x: (-get_best_score(x[3][priority], x[1], x[2]), x[0])
         )
 
         # Assign applicants based on the current priority
         remaining_applicants = []
-        for name, scores, priorities in applicants:
+        for name, scores, special_exam, priorities in applicants:
             chosen_department = priorities[priority]
-            relevant_score = get_department_score(chosen_department, scores)
+            best_score = get_best_score(chosen_department, scores, special_exam)
             if len(departments[chosen_department]) < n:
-                departments[chosen_department].append((name, relevant_score))
+                departments[chosen_department].append((name, best_score))
             else:
-                remaining_applicants.append((name, scores, priorities))
+                remaining_applicants.append((name, scores, special_exam, priorities))
 
         # Update applicants list with only those not yet accepted
         applicants = remaining_applicants
 
     return departments
+
 
 def write_departments_to_files(departments):
     """Writes the final accepted applicants for each department to separate files."""
