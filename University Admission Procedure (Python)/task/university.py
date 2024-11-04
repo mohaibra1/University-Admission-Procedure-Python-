@@ -23,19 +23,32 @@ def sort_high_low(app):
 
 def read_applicants(filename):
     """Reads applicants from a file and parses them into a structured list."""
-    app = []
+    applicants = []
     with open(filename, 'r') as file:
         for line in file:
             parts = line.strip().split()
             first_name, last_name = parts[0], parts[1]
             scores = list(map(float, parts[2:6]))  # Convert the four scores to floats
             priorities = parts[6:]
-            app.append((f"{first_name} {last_name}", scores, priorities))
-    return app
+            applicants.append((f"{first_name} {last_name}", scores, priorities))
+    return applicants
 
-def process_applicants(app, n):
+def get_department_score(department, scores):
+    """Returns the relevant score or mean score for a department."""
+    department_exam_indices = {
+        'Physics': [0, 2],         # Physics and Math
+        'Chemistry': [1],          # Chemistry
+        'Mathematics': [2],        # Math
+        'Engineering': [3, 2],     # Computer Science and Math
+        'Biotech': [1, 0]          # Chemistry and Physics
+    }
+    exams = department_exam_indices[department]
+    return sum(scores[i] for i in exams) / len(exams)
+
+
+def process_applicants(applicants, n):
     """Processes applicants for each department based on their priorities and scores."""
-    departments1 = {
+    departments = {
         'Biotech': [],
         'Chemistry': [],
         'Engineering': [],
@@ -43,52 +56,44 @@ def process_applicants(app, n):
         'Physics': []
     }
 
-    # Mapping departments to specific exam index
-    department_exam_index = {
-        'Physics': 0,
-        'Chemistry': 1,
-        'Mathematics': 2,
-        'Engineering': 3,
-        'Biotech': 1
-    }
-
     # For each priority round (1st, 2nd, 3rd)
     for priority in range(3):
-        # Sort applicants by relevant exam score and name
-        app.sort(key=lambda x: (-x[1][department_exam_index[x[2][priority]]], x[0]))
+        # Sort applicants by relevant score and name
+        applicants.sort(
+            key=lambda x: (-get_department_score(x[2][priority], x[1]), x[0])
+        )
 
         # Assign applicants based on the current priority
         remaining_applicants = []
-        for name, scores, priorities in app:
+        for name, scores, priorities in applicants:
             chosen_department = priorities[priority]
-            relevant_score = scores[department_exam_index[chosen_department]]
-            if len(departments1[chosen_department]) < n:
-                departments1[chosen_department].append((name, relevant_score))
+            relevant_score = get_department_score(chosen_department, scores)
+            if len(departments[chosen_department]) < n:
+                departments[chosen_department].append((name, relevant_score))
             else:
                 remaining_applicants.append((name, scores, priorities))
 
         # Update applicants list with only those not yet accepted
-        app = remaining_applicants
+        applicants = remaining_applicants
 
-    return departments1
+    return departments
 
-
-def print_departments(departments1):
-    """Prints out the final accepted applicants for each department in the required format."""
-    for department in sorted(departments.keys()):
-        print(department)
+def write_departments_to_files(departments):
+    """Writes the final accepted applicants for each department to separate files."""
+    for department, accepted_applicants in departments.items():
         # Sort each department's accepted applicants by score descending, then by name ascending
-        accepted_applicants = sorted(departments[department], key=lambda x: (-x[1], x[0]))
-        for name, score in accepted_applicants:
-            print(f"{name} {score:.1f}")
-        print()
+        accepted_applicants = sorted(accepted_applicants, key=lambda x: (-x[1], x[0]))
+        with open(f"{department.lower()}.txt", 'w') as file:
+            for name, score in accepted_applicants:
+                file.write(f"{name} {score:.1f}\n")
+
 
 total_num_applicants = int(input('Number of applicants: '))
 # max_num_applicants = int(input('Maximum number of applicants: '))
-applicants = read_applicants('applicants.txt')
+app = read_applicants('applicants.txt')
 
 # sorted_applicants = acceptance(total_num_applicants, max_num_applicants, applicants)
 # print('Successful applicants:')
 # print(*sorted_applicants, sep='\n')
-departments = process_applicants(applicants, total_num_applicants)
-print_departments(departments)
+departments1 = process_applicants(app, total_num_applicants)
+write_departments_to_files(departments1)
